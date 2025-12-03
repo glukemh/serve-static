@@ -2,7 +2,6 @@ use std::env;
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::path::Path;
 use std::thread;
 
 fn main() {
@@ -19,11 +18,18 @@ fn main() {
     let listener = TcpListener::bind(&addr).expect("Failed to bind address");
     println!("Serving static files on http://{}/", addr);
 
+    let cwd = env::current_dir().expect("Failed to get current dir");
+    let pub_dir = cwd.join("public");
+    if !pub_dir.is_dir() {
+        panic!("expecting public directory")
+    }
+
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                thread::spawn(|| {
-                    if let Err(e) = handle_connection(stream) {
+                let pub_dir = pub_dir.clone();
+                thread::spawn(move || {
+                    if let Err(e) = handle_connection(stream, pub_dir) {
                         eprintln!("Connection error: {}", e);
                     }
                 });
@@ -35,7 +41,7 @@ fn main() {
     }
 }
 
-fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
+fn handle_connection(mut stream: TcpStream, pub_dir: std::path::PathBuf) -> std::io::Result<()> {
     // read request (just enough to get the request line and headers)
     let mut buffer = [0; 4096];
     let n = stream.read(&mut buffer)?;
@@ -65,7 +71,6 @@ fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
         path = &path[..pos];
     }
 
-    // normalize path
     if path == "/" {
         path = "/index.html";
     }
@@ -84,9 +89,9 @@ fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
 
     // remove leading slash and serve from current directory (you can place files beside the binary)
     let rel_path = &path[1..];
-    let fs_path = Path::new(rel_path);
+    let fs_path = pub_dir.join(rel_path);
 
-    match fs::read(fs_path) {
+    match fs::read(&fs_path) {
         Ok(contents) => {
             let content_type = match fs_path.extension().and_then(|s| s.to_str()) {
                 Some("html") => "text/html; charset=utf-8",
