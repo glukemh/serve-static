@@ -100,10 +100,10 @@ fn handle_connection(mut stream: TcpStream, pub_dir: std::path::PathBuf) -> std:
 
     match fs::read(&fs_path) {
         Ok(contents) => {
-            let content_type = match fs_path.extension().and_then(|s| s.to_str()) {
-                Some("html") => "text/html; charset=utf-8",
-                Some("css") => "text/css; charset=utf-8",
-                Some("js") => "application/javascript; charset=utf-8",
+            let content_type = match fs_path.extension().and_then(|s| s.to_str()).unwrap_or_default() {
+                "html" => "text/html; charset=utf-8",
+                "css" => "text/css; charset=utf-8",
+                "js" => "application/javascript; charset=utf-8",
                 _ => "application/octet-stream",
             };
             let header = format!(
