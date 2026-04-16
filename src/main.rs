@@ -2,27 +2,37 @@ use std::env;
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::num::NonZeroU16;
 use std::thread;
 
 fn main() {
-    // only allow overriding the port (default host is 127.0.0.1, default port 7878)
+    // allow overriding the port (default host is 127.0.0.1, default port 7878) and optionally the public dir
     let default_host = "127.0.0.1";
-    let default_port: u16 = 7878;
-    let port = env::args().nth(1)
-        .map(|s| s.parse::<u16>().ok())
-        .flatten()
-        .take_if(|p| *p > 0)
-        .unwrap_or(default_port);
+    let default_port = 7878;
+    let mut args = env::args().skip(1);
+    let mut port = default_port;
+    let mut pub_dir_override = None;
+
+    if let Some(first) = args.next() {
+        if let Ok(nz) = first.parse::<NonZeroU16>() {
+            port = nz.get();
+            if let Some(dir) = args.next() {
+                pub_dir_override = Some(dir.into());
+            }
+        } else {
+            pub_dir_override = Some(first.into());
+        }
+    }
 
     let addr = format!("{}:{}", default_host, port);
     let listener = TcpListener::bind(&addr).expect("Failed to bind address");
-    println!("Serving static files on http://{}/", addr);
 
     let cwd = env::current_dir().expect("Failed to get current dir");
-    let pub_dir = cwd.join("public");
+    let pub_dir = pub_dir_override.unwrap_or_else(|| cwd.join("public"));
     if !pub_dir.is_dir() {
-        panic!("expecting public directory")
+        panic!("expecting public directory at {}", pub_dir.display())
     }
+    println!("Serving static files on http://{}/ from {}", addr, pub_dir.display());
 
     for stream in listener.incoming() {
         match stream {
