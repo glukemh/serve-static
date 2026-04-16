@@ -27,7 +27,9 @@ fn main() {
     let addr = format!("{}:{}", host, port);
     let listener = TcpListener::bind(&addr).expect("Failed to bind address");
 
-    println!("Serving static files on http://{}/ from {}", addr, pub_dir.display());
+    let canonical = pub_dir.canonicalize();
+    let display = canonical.as_ref().unwrap_or(&pub_dir).display();
+    println!("Serving static files on http://{}/ from {}", addr, display);
 
     for stream in listener.incoming() {
         match stream {
