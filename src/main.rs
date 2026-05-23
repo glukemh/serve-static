@@ -104,6 +104,9 @@ fn handle_connection(mut stream: TcpStream, pub_dir: std::path::PathBuf) -> std:
                 "html" => "text/html; charset=utf-8",
                 "css" => "text/css; charset=utf-8",
                 "js" => "application/javascript; charset=utf-8",
+                "svg" => "image/svg+xml",
+                "png" => "image/png",
+                "jpg" | "jpeg" => "image/jpeg",
                 _ => "application/octet-stream",
             };
             let header = format!(
